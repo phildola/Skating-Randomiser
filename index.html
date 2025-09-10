@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Jump & Spin Generator</title>
+<style>
+  body { font-family: Arial, sans-serif; background-color: #121212; color: #f1f1f1; text-align: center; padding: 20px; }
+  .container { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+  .list-box { border: 1px solid #555; padding: 10px; border-radius: 8px; background-color: #1e1e1e; max-height: 300px; overflow-y: auto; flex: 1 1 200px; }
+  .list-header { cursor: pointer; user-select: none; }
+  .list-content { margin-top: 10px; }
+  .buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+  button { padding: 10px; border: none; border-radius: 8px; cursor: pointer; background-color: #333; color: #f1f1f1; }
+  button:hover { background-color: #555; }
+  #result { margin-top: 20px; padding: 15px; border: 1px solid #444; border-radius: 8px; background-color: #1e1e1e; font-size: 1.2em; }
+  .add-move { display: flex; margin-top: 10px; gap: 5px; }
+  .add-move input { flex: 1; padding: 5px; border-radius: 4px; border: 1px solid #555; }
+  .remove-btn { background-color: #ff4d4d; border: none; border-radius: 4px; color: white; padding: 2px 6px; cursor: pointer; font-size: 12px; margin-left: 5px; }
+  .remove-btn:hover { background-color: #e60000; }
+</style>
+</head>
+<body>
+<h1>Jump & Spin Generator</h1>
+
+<div class="container">
+  <div class="list-box">
+    <div class="list-header" onclick="toggleList('jumpContent')">Jumps ▼</div>
+    <div class="list-content" id="jumpContent"></div>
+  </div>
+  <div class="list-box">
+    <div class="list-header" onclick="toggleList('spinContent')">Spins ▼</div>
+    <div class="list-content" id="spinContent"></div>
+  </div>
+</div>
+
+<div class="buttons">
+  <button onclick="generateSingleJump()">Single Jump</button>
+  <button onclick="generateSingleSpin()">Single Spin</button>
+  <button onclick="generateCombo(3)">3 Jump Combo</button>
+  <button onclick="generateSpinCombo()">Spin Combo</button>
+  <button onclick="generateCombo(5)">5 Jump Combo</button>
+  <button onclick="generateBoth()">Both</button>
+</div>
+<button style="margin-top:20px;width:100%;" onclick="generateRandom()">Random</button>
+<div id="result">Result will appear here</div>
+
+<script>
+const defaultJumps = ["Axel","Lutz","Flip","Salchow","Loop","Toe Loop","Euler"];
+const defaultSpins = ["Camel Spin","Sit Spin","Upright Spin","Layback Spin","Flying Camel","Flying Sit","Biellmann Spin","I-Spin","Y-Spin","Pancake Spin","Tuck Spin"];
+
+let jumps = JSON.parse(localStorage.getItem('jumps')) || [...defaultJumps];
+let spins = JSON.parse(localStorage.getItem('spins')) || [...defaultSpins];
+
+function saveMoves(){ localStorage.setItem('jumps', JSON.stringify(jumps)); localStorage.setItem('spins', JSON.stringify(spins)); }
+
+function toggleList(id){
+  const content = document.getElementById(id);
+  content.style.display = content.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderList(containerId, items, type){
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+
+  const addDiv = document.createElement('div');
+  addDiv.className = 'add-move';
+  addDiv.innerHTML = `<input type='text' id='new${type}' placeholder='Add ${type}'><button onclick='addMove("${type}")'>Add</button>`;
+  container.appendChild(addDiv);
+
+  items.forEach((item, idx)=>{
+    const div = document.createElement('div');
+    const checkbox = document.createElement('input'); checkbox.type='checkbox'; checkbox.checked=true; checkbox.id=`${type}-${item}`;
+    div.appendChild(checkbox);
+    const label = document.createElement('label'); label.textContent=item; label.setAttribute('for',`${type}-${item}`);
+    div.appendChild(label);
+    const removeBtn = document.createElement('button'); removeBtn.className='remove-btn'; removeBtn.textContent='Remove';
+    removeBtn.onclick = ()=>{ items.splice(idx,1); saveMoves(); renderLists(); };
+    div.appendChild(removeBtn);
+    container.appendChild(div);
+  });
+}
+
+function renderLists(){
+  renderList('jumpContent', jumps, 'jump');
+  renderList('spinContent', spins, 'spin');
+}
+
+function addMove(type){
+  const input = document.getElementById(`new${type}`);
+  if(!input.value.trim()) return;
+  type==='jump'? jumps.push(input.value.trim()): spins.push(input.value.trim());
+  saveMoves(); renderLists(); input.value='';
+}
+
+function getActive(type){
+  const list = type==='jump'? jumps: spins;
+  return list.filter(item=>document.getElementById(`${type}-${item}`).checked);
+}
+
+function generateSingleJump(){
+  const active=getActive('jump').filter(j=>j!=='Euler');
+  if(!active.length) return displayResult('No jumps selected');
+  const jump=active[Math.floor(Math.random()*active.length)];
+  const multiplier=Math.floor(Math.random()*5)+1;
+  displayResult(`${jump} x${multiplier}`);
+}
+
+function generateSingleSpin(){
+  const active=getActive('spin');
+  if(!active.length) return displayResult('No spins selected');
+  displayResult(active[Math.floor(Math.random()*active.length)]);
+}
+
+function generateCombo(n){
+  const active=getActive('jump').filter(j=>j!=='Euler');
+  if(!active.length) return displayResult('No jumps selected');
+  let combo=[];
+  for(let i=0;i<n;i++){
+    let jump=active[Math.floor(Math.random()*active.length)];
+    if(['Flip','Lutz','Salchow'].includes(jump)&&i!==0) combo.push('Euler');
+    combo.push(jump);
+  }
+  displayResult(combo.join(' → '));
+}
+
+function generateSpinCombo(){
+  const active=getActive('spin');
+  if(active.length<2) return displayResult('Not enough spins selected');
+  let spin1, spin2;
+  do{spin1=active[Math.floor(Math.random()*active.length)];}while(spin1==='Upright Spin');
+  do{spin2=active[Math.floor(Math.random()*active.length)];}while(spin2===spin1);
+  displayResult(`${spin1} → ${spin2}`);
+}
+
+function generateBoth(){
+  const activeJ=getActive('jump').filter(j=>j!=='Euler');
+  const activeS=getActive('spin');
+  if(!activeJ.length||!activeS.length) return displayResult('Not enough elements selected');
+
+  const jump=activeJ[Math.floor(Math.random()*activeJ.length)];
+  const spin=activeS[Math.floor(Math.random()*activeS.length)];
+
+  const entries=["Falling Leaf","Crossover Entry","3 Turn Entry",null];
+  const entry=entries[Math.floor(Math.random()*entries.length)];
+
+  let result = entry? `${jump} → ${entry} → ${spin}` : `${jump} → ${spin}`;
+  displayResult(result);
+}
+
+function generateRandom(){
+  const funcs=[generateSingleJump,generateSingleSpin,()=>generateCombo(3),()=>generateCombo(5),generateSpinCombo,generateBoth];
+  funcs[Math.floor(Math.random()*funcs.length)]();
+}
+
+function displayResult(text){
+  document.getElementById('result').textContent=text;
+}
+
+renderLists();
+</script>
+</body>
+</html>
